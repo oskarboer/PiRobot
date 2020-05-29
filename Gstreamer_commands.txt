@@ -1,0 +1,9 @@
+Sender(rpi):
+raspivid -fps 20 -h 320 -w 480 -vf -hf -n -rot 270 -t 0 -b 200000 -o - | gst-launch-1.0 -v fdsrc ! h264parse ! rtph264pay ! udpsink host=192.168.0.102 port=5000
+
+explanation: raspivid (soft to capture from camera) -fps 20 -h 320 -w 480 -vf (vertical image flip) -hf (horizontal image flip) -n (no-preview) -rot 270 (rotate image 270 degrees) -t 0 (timeout) -b 200000 (bitrate, this is related to h264 encoding (at least I think so)) -o - (-o - is used to output to "stdout") | gst-launch-1.0 -v fdsrc ()read from "stdout" ! h264parse (parser is used to "show" to gst that we use h264 encoding (which is output from raspivid)) ! rtph264pay (depay from rtp) ! udpsink host=192.168.0.102 port=5000 (send it to IP:port)
+
+Reciever (pc with IP adress form above):
+gst-launch-1.0 udpsrc port=5000 caps = "application/x-rtp, media=video, clock-rate=90000, encoding-name=H264, payload=96" ! rtph264depay ! avdec_h264  ! videoconvert ! autovideosink sync=false
+
+explanation: gst-launch-1.0 udpsrc port=5000 (recieve from) caps = "application/x-rtp, media=video, clock-rate=90000, encoding-name=H264, payload=96" (info about source of image cgit.freedesktop.org/gstreamer/gst-plugins-good/tree/gst/rtp/README) ! rtph264depay (unpack rtp) ! avdec_h264 (decode h264)  ! videoconvert (make video fit, (dunno, just use it)) ! autovideosink (output it to the sreen, also can be used filesink, for more search "gst-inspect-1.0 | grep sink") sync=false (this way is faster) 
